@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co.com/7NrtB6Vv/image.png" alt="Forkathon 2026 Header" width="450" />
+<img src="https://i.ibb.co.com/7NrtB6Vv/image.png" alt="Forkathon 2026 Header" width="1000" />
 
 <br/><br/>
 

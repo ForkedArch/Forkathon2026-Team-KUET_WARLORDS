@@ -1,323 +1,303 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="theme-dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Digital Backpack | Command Center</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="The Digital Backpack — turn scattered student chaos into an organized, actionable command center. Built by Team KUET WARLORDS for Forkathon 2026." />
+    <meta name="theme-color" content="#0b1120" />
+    <title>The Digital Backpack</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+    <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="theme-dark">
 
-    <!-- Top Utility & System Status Bar -->
-    <div class="top-bar">
-        <div class="status-indicator">
-            <span class="status-dot online" id="sync-status"></span>
-            <span id="status-text">Offline Ready (Local Storage Active)</span>
+    <!-- ============================ APP BAR ============================ -->
+    <header class="appbar">
+        <a class="brand" href="#" data-page="dashboard" aria-label="The Digital Backpack home">
+            <img src="assets/logo.png" alt="The Digital Backpack logo" class="brand-logo"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='grid';" />
+            <span class="brand-logo-fallback" aria-hidden="true">DB</span>
+            <span class="brand-text">
+                <strong>The Digital Backpack</strong>
+                <span>Turn chaos into action</span>
+            </span>
+        </a>
+
+        <div class="search-wrap">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input type="text" id="search-input" class="search-input" autocomplete="off"
+                   placeholder="Search your backpack…" aria-label="Search items" />
+            <div class="search-history" id="search-history" hidden>
+                <div class="search-history-head">
+                    <span>Recent searches</span>
+                    <button type="button" class="link-btn" id="clear-history-btn">Clear history</button>
+                </div>
+                <div class="search-history-list" id="search-history-list"></div>
+            </div>
         </div>
-        
-        <div class="top-controls">
-            <!-- Theme Switcher -->
-            <label for="theme-select">🎨 Theme:</label>
-            <select id="theme-select">
-                <option value="theme-dark">Dark Mode</option>
-                <option value="theme-light">Light Mode</option>
-                <option value="theme-hacker">Hacker Green</option>
-                <option value="theme-kuet">KUET Red & Blue</option>
+
+        <nav class="nav-tabs" aria-label="Primary">
+            <button class="nav-tab active" data-page="dashboard">Dashboard</button>
+            <button class="nav-tab" data-page="academic-hub">Academic Hub</button>
+            <button class="nav-tab" data-page="achievements">Achievements</button>
+            <button class="nav-tab" data-page="credits">Credits</button>
+        </nav>
+
+        <div class="appbar-actions">
+            <select id="theme-select" class="theme-select" aria-label="Choose theme">
+                <option value="theme-dark">🌙 Dark</option>
+                <option value="theme-light">☀️ Light</option>
+                <option value="theme-hacker">💚 Hacker</option>
+                <option value="theme-zen">🧘 Zen</option>
             </select>
-
-            <!-- Mode Toggles -->
-            <button id="exam-mode-btn" class="toggle-btn">🔥 Exam Week Mode: OFF</button>
-            <button id="zen-mode-btn" class="toggle-btn">🧘 Zen Mode: OFF</button>
-
-            <!-- Font Resizer -->
-            <div class="font-resizer">
-                <button id="font-decrease">A-</button>
-                <button id="font-reset">A</button>
-                <button id="font-increase">A+</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Header Section -->
-    <header class="hero-header">
-        <div class="header-branding">
-            <h1>🎒 The Digital Backpack</h1>
-            <p class="tagline">Engineered for KUETians | Team KUET WARLORDS</p>
-        </div>
-
-        <!-- Daily Digest Banner -->
-        <div class="daily-digest-banner" id="daily-digest">
-            <span class="digest-icon">📢</span>
-            <p id="digest-text">Good morning, Warrior! You have <strong>0 urgent CTs</strong> and <strong>0 unread slides</strong> today.</p>
-        </div>
-
-        <!-- Gamification & Stats Dashboard -->
-        <div class="stats-grid">
-            <!-- Clutter Gauge -->
-            <div class="stat-card clutter-box">
-                <div class="stat-header">
-                    <span>🎒 Backpack Clutter</span>
-                    <strong id="clutter-text">0%</strong>
-                </div>
-                <div class="progress-bar">
-                    <div id="progress-fill" style="width: 0%;"></div>
-                </div>
-                <small id="clutter-status-msg">Clean & Clear!</small>
-            </div>
-
-            <!-- Streak Counter -->
-            <div class="stat-card streak-box">
-                <span class="stat-icon">🔥</span>
-                <div class="stat-info">
-                    <h3 id="streak-count">0 Days</h3>
-                    <p>Productivity Streak</p>
-                </div>
-            </div>
-
-            <!-- XP Level & Rank -->
-            <div class="stat-card xp-box">
-                <span class="stat-icon">⚡</span>
-                <div class="stat-info">
-                    <h3 id="user-rank">Lab Muggle</h3>
-                    <p>Level <span id="user-level">1</span> (XP: <span id="user-xp">0</span>/100)</p>
-                </div>
-            </div>
-
-            <!-- Time Budgeting Summary -->
-            <div class="stat-card budget-box">
-                <span class="stat-icon">⏳</span>
-                <div class="stat-info">
-                    <h3 id="study-hours-left">0 hrs</h3>
-                    <p>Estimated Study Time Left</p>
-                </div>
-            </div>
+            <button id="add-btn" class="primary-btn add-btn">+ Add</button>
+            <button id="menu-btn" class="icon-btn" aria-label="Open menu">☰</button>
         </div>
     </header>
 
-    <main class="main-layout">
+    <!-- ============================ DASHBOARD ============================ -->
+    <section id="dashboard" class="page active">
+        <div class="page-intro">
+            <h1>What do I need to do right now?</h1>
+            <p class="lead">Your backpack, sorted by what actually matters today.</p>
+        </div>
 
-        <!-- Left Column: Command & Urgency Engine -->
-        <aside class="sidebar-engine">
-
-            <!-- Panic & Urgent Action Center -->
-            <section class="widget-card panic-card">
-                <h2>🚨 Urgency Control</h2>
-                <button id="panic-btn" class="danger-btn">⚡ Panic Mode (Filter Next 12 Hours)</button>
-                
-                <div id="urgent-list" class="urgent-container">
-                    <p class="empty-state">No urgent deadlines right now! Relax or prep ahead.</p>
+        <div class="dash-top">
+            <div class="card gauge-card">
+                <div class="card-head">
+                    <h2>Backpack Clutter</h2>
+                    <strong id="clutter-pct">0%</strong>
                 </div>
-            </section>
-
-            <!-- Integrated Pomodoro Sprint Timer -->
-            <section class="widget-card pomodoro-card">
-                <h2>⏱️ Pomodoro Study Timer</h2>
-                <p class="widget-subtitle">Attached to: <em id="pomo-active-task">None Selected</em></p>
-                
-                <div class="timer-display">
-                    <span id="pomo-minutes">25</span>:<span id="pomo-seconds">00</span>
+                <div class="gauge-track"><div class="gauge-fill" id="gauge-fill"></div></div>
+                <p class="muted" id="clutter-msg">Clean &amp; clear — nothing pending.</p>
+                <div class="gauge-stats">
+                    <span><b id="stat-open">0</b> open</span>
+                    <span><b id="stat-done">0</b> done</span>
+                    <span><b id="stat-total">0</b> total</span>
                 </div>
+            </div>
 
-                <div class="timer-controls">
-                    <button id="pomo-start-btn" class="action-btn start">Start</button>
-                    <button id="pomo-pause-btn" class="action-btn pause">Pause</button>
-                    <button id="pomo-reset-btn" class="action-btn reset">Reset</button>
+            <div class="card panic-card">
+                <div class="card-head">
+                    <h2>Panic Mode</h2>
+                    <label class="switch">
+                        <input type="checkbox" id="panic-toggle" />
+                        <span class="slider"></span>
+                    </label>
                 </div>
-
-                <div class="audio-tester">
-                    <small>Test Alarm Sound:</small>
-                    <button id="test-chime-btn" class="small-btn">🔔 Test Chime</button>
+                <p class="muted">Isolate everything due within the next 12 hours.</p>
+                <div id="panic-list" class="panic-list">
+                    <p class="empty">No fires right now. Breathe.</p>
                 </div>
-            </section>
+            </div>
 
-            <!-- System Data & Backup Controls -->
-            <section class="widget-card data-card">
-                <h2>💾 Backup & Data Engine</h2>
-                <p class="widget-subtitle">Export your workspace state offline</p>
-                
-                <div class="button-group">
-                    <button id="export-json-btn" class="secondary-btn">📥 Export JSON</button>
-                    <label for="import-json-input" class="secondary-btn-label">📤 Import JSON</label>
-                    <input type="file" id="import-json-input" accept=".json" style="display: none;">
+            <div class="card pomo-card">
+                <div class="card-head"><h2>Focus Sprint</h2></div>
+                <p class="muted">On: <em id="pomo-task">nothing selected</em></p>
+                <div class="pomo-display" id="pomo-display">25:00</div>
+                <div class="pomo-modes">
+                    <button class="chip active" data-mins="25">Focus 25</button>
+                    <button class="chip" data-mins="50">Deep 50</button>
+                    <button class="chip" data-mins="5">Break 5</button>
                 </div>
-                <button id="export-md-btn" class="secondary-btn full-width">📝 Copy Markdown Checklist</button>
-            </section>
-
-            <!-- 24-Hour Dumpster Archive -->
-            <section class="widget-card dumpster-card">
-                <h2>🗑️ Dumpster Archive</h2>
-                <p class="widget-subtitle">Deleted items stay here for 24 hours</p>
-                <div id="dumpster-list" class="dumpster-container">
-                    <small class="empty-state">Dumpster is empty.</small>
+                <div class="pomo-controls">
+                    <button id="pomo-start" class="mini-btn primary">Start</button>
+                    <button id="pomo-pause" class="mini-btn">Pause</button>
+                    <button id="pomo-reset" class="mini-btn ghost">Reset</button>
                 </div>
-                <button id="empty-dumpster-btn" class="text-danger-btn">Permanently Clear Trash</button>
-            </section>
+                <small class="muted">Sprints today: <b id="pomo-count">0</b></small>
+            </div>
+        </div>
 
-        </aside>
+        <div class="card matrix-card">
+            <div class="card-head">
+                <h2>Priority Matrix</h2>
+                <span class="hint">Auto-sorted by urgency &amp; importance</span>
+            </div>
+            <div class="matrix">
+                <div class="quadrant q1">
+                    <div class="q-head"><h3>Do First</h3><span class="badge red">Urgent + Important</span></div>
+                    <div class="q-body" id="q1"></div>
+                </div>
+                <div class="quadrant q2">
+                    <div class="q-head"><h3>Schedule</h3><span class="badge teal">Important</span></div>
+                    <div class="q-body" id="q2"></div>
+                </div>
+                <div class="quadrant q3">
+                    <div class="q-head"><h3>Delegate</h3><span class="badge amber">Urgent</span></div>
+                    <div class="q-body" id="q3"></div>
+                </div>
+                <div class="quadrant q4">
+                    <div class="q-head"><h3>Eliminate</h3><span class="badge gray">Low priority</span></div>
+                    <div class="q-body" id="q4"></div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        <!-- Right Column: Eisenhower Matrix & Main Content Workspace -->
-        <div class="content-workspace">
+    <!-- ============================ ACADEMIC HUB ============================ -->
+    <section id="academic-hub" class="page" hidden>
+        <div class="page-intro">
+            <h1>Academic Hub</h1>
+            <p class="lead">Every file, link, note and task in one searchable library.</p>
+        </div>
 
-            <!-- Eisenhower Matrix (4 Quadrants) -->
-            <section class="eisenhower-section">
-                <h2>📊 Eisenhower Prioritization Grid</h2>
-                
-                <div class="matrix-grid">
-                    <!-- Q1: Urgent & Important -->
-                    <div class="matrix-quadrant q1-urgent-important">
-                        <div class="quadrant-header">
-                            <h3>🔥 Q1: Do First</h3>
-                            <span class="badge red">Urgent + Important</span>
-                        </div>
-                        <div id="quadrant-q1" class="quadrant-body">
-                            <!-- Items auto-populated by JavaScript -->
-                        </div>
+        <div class="hub-toolbar">
+            <div class="filter-row" id="type-filters">
+                <button class="chip active" data-type="all">All</button>
+                <button class="chip" data-type="Task">Tasks</button>
+                <button class="chip" data-type="File">Files</button>
+                <button class="chip" data-type="Link">Links</button>
+                <button class="chip" data-type="Note">Notes</button>
+            </div>
+            <div class="filter-row" id="course-filters">
+                <button class="chip active" data-course="all">All courses</button>
+            </div>
+        </div>
+
+        <div class="library" id="library">
+            <div class="empty-block">
+                <div class="empty-emoji">🎒</div>
+                <h3>Your backpack is empty</h3>
+                <p>Hit <b>+ Add</b> to drop in your first file, link, note or task.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================ ACHIEVEMENTS ============================ -->
+    <section id="achievements" class="page" hidden>
+        <div class="page-intro">
+            <h1>Achievements</h1>
+            <p class="lead">Level up by clearing clutter and staying focused.</p>
+        </div>
+
+        <div class="ach-top">
+            <div class="card level-card">
+                <div class="card-head">
+                    <h2 id="rank-name">Lab Muggle</h2>
+                    <span class="lvl-pill">Lvl <span id="level-num">1</span></span>
+                </div>
+                <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+                <small class="muted"><span id="xp-now">0</span> / <span id="xp-max">100</span> XP</small>
+            </div>
+            <div class="card streak-card">
+                <span class="big-emoji">🔥</span>
+                <div>
+                    <h2 id="streak-days">1</h2>
+                    <p class="muted">day streak</p>
+                </div>
+            </div>
+            <div class="card sprint-card">
+                <span class="big-emoji">⏱️</span>
+                <div>
+                    <h2 id="total-sprints">0</h2>
+                    <p class="muted">focus sprints</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head"><h2>Badges</h2></div>
+            <div class="badges-grid" id="badges-grid"></div>
+        </div>
+    </section>
+
+    <!-- ============================ CREDITS ============================ -->
+    <section id="credits" class="page" hidden>
+        <div class="page-intro">
+            <h1>Credits &amp; Data</h1>
+            <p class="lead">Back up your backpack and meet the team behind it.</p>
+        </div>
+
+        <div class="card">
+            <div class="card-head"><h2>Data Controls</h2></div>
+            <p class="muted">Everything lives locally in your browser. Export a backup anytime.</p>
+            <div class="data-btns">
+                <button id="export-json" class="mini-btn">📥 Export JSON</button>
+                <label for="import-json" class="mini-btn as-label">📤 Import JSON</label>
+                <input type="file" id="import-json" accept=".json" hidden />
+                <button id="export-md" class="mini-btn">📝 Copy Markdown</button>
+                <button id="reset-all" class="mini-btn danger">🗑️ Reset everything</button>
+            </div>
+        </div>
+
+        <div class="card ack-card">
+            <div class="ack-logo">
+                <img src="assets/logo.png" alt="Team logo"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='grid';" />
+                <span class="ack-logo-fallback" aria-hidden="true">DB</span>
+            </div>
+            <h2 class="team-name">KUET_WARLORDS</h2>
+            <p class="event">Built for <strong>Forkathon 2026</strong> · ForkedArch Freshers Hackathon</p>
+            <p class="ack-text">
+                With sincere gratitude to the event organizers, mentors, and the academic
+                community whose support makes student innovation possible. This project is our
+                attempt to turn the everyday chaos of campus life into something calm,
+                understandable, and actionable.
+            </p>
+        </div>
+    </section>
+
+    <!-- ============================ ADD / EDIT MODAL ============================ -->
+    <div class="overlay" id="add-overlay" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div class="modal-head">
+                <h2 id="modal-title">Add to backpack</h2>
+                <button class="icon-btn" id="close-modal" aria-label="Close">✕</button>
+            </div>
+            <form id="add-form" class="modal-form">
+                <div class="field">
+                    <label for="f-name">File name, task or URL</label>
+                    <input type="text" id="f-name" placeholder="e.g. discrete_CT.pdf or https://drive.google.com/…" required />
+                </div>
+                <div class="field">
+                    <label for="f-context">Readable nickname <span class="opt">(optional)</span></label>
+                    <input type="text" id="f-context" placeholder="e.g. Discrete Math CT slides" />
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="f-type">Type</label>
+                        <select id="f-type">
+                            <option value="Task">Task</option>
+                            <option value="File">File</option>
+                            <option value="Link">Link</option>
+                            <option value="Note">Note</option>
+                        </select>
                     </div>
-
-                    <!-- Q2: Not Urgent & Important -->
-                    <div class="matrix-quadrant q2-important">
-                        <div class="quadrant-header">
-                            <h3>📅 Q2: Schedule</h3>
-                            <span class="badge blue">Not Urgent + Important</span>
-                        </div>
-                        <div id="quadrant-q2" class="quadrant-body">
-                            <!-- Items auto-populated by JavaScript -->
-                        </div>
-                    </div>
-
-                    <!-- Q3: Urgent & Not Important -->
-                    <div class="matrix-quadrant q3-urgent">
-                        <div class="quadrant-header">
-                            <h3>⚡ Q3: Delegate / Quick Do</h3>
-                            <span class="badge yellow">Urgent + Not Important</span>
-                        </div>
-                        <div id="quadrant-q3" class="quadrant-body">
-                            <!-- Items auto-populated by JavaScript -->
-                        </div>
-                    </div>
-
-                    <!-- Q4: Not Urgent & Not Important -->
-                    <div class="matrix-quadrant q4-trash">
-                        <div class="quadrant-header">
-                            <h3>🧹 Q4: Eliminate / Archive</h3>
-                            <span class="badge gray">Low Priority</span>
-                        </div>
-                        <div id="quadrant-q4" class="quadrant-body">
-                            <!-- Items auto-populated by JavaScript -->
-                        </div>
+                    <div class="field">
+                        <label for="f-course">Course <span class="opt">(optional)</span></label>
+                        <input type="text" id="f-course" list="course-list" placeholder="e.g. CSE-1101" />
+                        <datalist id="course-list"></datalist>
                     </div>
                 </div>
-            </section>
-
-            <!-- Input Form Section (Integrates Member 2's Entry Points) -->
-            <section class="widget-card form-section">
-                <h3>➕ Add New Resource / File</h3>
-                
-                <form id="add-form" class="responsive-form">
-                    <div class="form-group">
-                        <label for="item-name">File Name or URL:</label>
-                        <input type="text" id="item-name" placeholder="e.g. mawa_discrete_CT.pdf or https://drive.google.com/..." required>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="f-deadline">Deadline <span class="opt">(optional)</span></label>
+                        <input type="datetime-local" id="f-deadline" />
                     </div>
-
-                    <div class="form-group">
-                        <label for="item-context">Readable Nickname (Context):</label>
-                        <input type="text" id="item-context" placeholder="e.g. Discrete Math CT Syllabus & Slides">
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="item-course">Course:</label>
-                            <select id="item-course">
-                                <option value="CSE-1101">CSE-1101 (Discrete Math)</option>
-                                <option value="EEE-1201">EEE-1201 (Basic Electrical)</option>
-                                <option value="HUM-1103">HUM-1103 (English & Economics)</option>
-                                <option value="General">General / Other</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="item-type">Type:</label>
-                            <select id="item-type">
-                                <option value="File">📄 File (.pdf, .pptx)</option>
-                                <option value="Link">🔗 Web Link / Drive</option>
-                                <option value="Task">✅ Task / CT</option>
-                                <option value="Note">📝 Quick Note</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="item-date">Deadline Date & Time:</label>
-                            <input type="datetime-local" id="item-date">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="item-time-cost">Est. Study Time:</label>
-                            <select id="item-time-cost">
-                                <option value="15">15 mins</option>
-                                <option value="30" selected>30 mins</option>
-                                <option value="60">1 hour</option>
-                                <option value="120">2 hours</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="item-priority">Priority Level:</label>
-                            <select id="item-priority">
-                                <option value="Auto">Auto Detect</option>
-                                <option value="High">🔴 High Priority</option>
-                                <option value="Medium">🟡 Medium Priority</option>
-                                <option value="Low">🟢 Low Priority</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button type="submit" id="add-btn" class="primary-btn">➕ Add to Backpack</button>
-                </form>
-            </section>
-
-            <!-- Search and Main Saved Display Grid (Member 4 Integrations) -->
-            <section class="widget-card display-section">
-                <div class="display-header">
-                    <h3>📁 Saved Backpack Items</h3>
-                    
-                    <!-- Search & Filter Controls -->
-                    <div class="search-bar">
-                        <input type="text" id="search-input" placeholder="🔍 Search by name, course, or hashtag (#CT)...">
-                        <select id="sort-select">
-                            <option value="deadline">Sort by Closest Deadline</option>
-                            <option value="date-added">Sort by Date Added</option>
-                            <option value="priority">Sort by Priority</option>
-                            <option value="alpha">Sort Alphabetically</option>
+                    <div class="field">
+                        <label for="f-priority">Priority</label>
+                        <select id="f-priority">
+                            <option value="Auto">Auto (from deadline)</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
                         </select>
                     </div>
                 </div>
-
-                <!-- Tag Cloud Filters -->
-                <div class="tag-cloud">
-                    <button class="tag-pill active" data-filter="all">All</button>
-                    <button class="tag-pill" data-filter="#CT">#CT</button>
-                    <button class="tag-pill" data-filter="#LabReport">#LabReport</button>
-                    <button class="tag-pill" data-filter="#Slides">#Slides</button>
-                    <button class="tag-pill" data-filter="#DriveLink">#DriveLink</button>
+                <div class="modal-actions">
+                    <button type="button" class="mini-btn ghost" id="cancel-modal">Cancel</button>
+                    <button type="submit" class="primary-btn">Save item</button>
                 </div>
-
-                <!-- Items Container -->
-                <div id="items-container" class="items-grid">
-                    <!-- Cards dynamically inserted here by JavaScript -->
-                </div>
-            </section>
-
+            </form>
         </div>
-    </main>
+    </div>
 
-    <!-- Hidden Confetti Canvas Overlay -->
-    <canvas id="confetti-canvas"></canvas>
-
-    <footer class="main-footer">
-        <p>The Digital Backpack &copy; 2026 | Built for KUET Forkathon | Team KUET WARLORDS</p>
-    </footer>
+    <div class="toast-host" id="toast-host" aria-live="polite"></div>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
 
     <script src="js/script.js"></script>
 </body>

@@ -1,620 +1,749 @@
+/* ============================================================================
+   THE DIGITAL BACKPACK — APP ENGINE
+   Team KUET_WARLORDS · Forkathon 2026
+   Vanilla JS · everything persists in localStorage · starts completely clean.
+   ========================================================================== */
+(function () {
+    "use strict";
 
-
-document.addEventListener('DOMContentLoaded', () => {
-    // --- STATE MANAGEMENT ---
-    let backpackItems = JSON.parse(localStorage.getItem('backpackItems')) || [];
-    let dumpsterItems = JSON.parse(localStorage.getItem('dumpsterItems')) || [];
-    let userStats = JSON.parse(localStorage.getItem('userStats')) || {
-        xp: 0,
-        level: 1,
-        streak: 1,
-        rank: 'Lab Muggle'
+    /* ------------------------------ STORAGE ------------------------------ */
+    const KEY = {
+        items: "db_items",
+        searches: "db_searches",
+        stats: "db_stats",
+        badges: "db_badges",
+        theme: "db_theme",
+        page: "db_page",
     };
 
-    let timerInterval = null;
-    let timerSecondsLeft = 25 * 60;
-    let isTimerRunning = false;
-    let currentFontSize = 16;
-    let activeTagFilter = 'all';
+    const RANKS = ["Lab Muggle", "Cadet Scholar", "Assignment Knight", "CT Conqueror", "Semester Sentinel", "KUET Warlord"];
+    const XP_PER_LEVEL = 100;
 
-    // --- DOM ELEMENT REFERENCES ---
-    const themeSelect = document.getElementById('theme-select');
-    const examModeBtn = document.getElementById('exam-mode-btn');
-    const zenModeBtn = document.getElementById('zen-mode-btn');
-    const syncStatusDot = document.getElementById('sync-status');
-    const statusText = document.getElementById('status-text');
+    const ACHIEVEMENTS = [
+        { id: "first",   icon: "🎒", name: "First Drop",   desc: "Add your first item",        test: (s) => s.itemsAdded >= 1 },
+        { id: "ten",     icon: "📦", name: "Loaded Up",    desc: "Add 10 items",               test: (s) => s.itemsAdded >= 10 },
+        { id: "clear1",  icon: "✅", name: "Getting Done", desc: "Complete a task",            test: (s) => s.cleared >= 1 },
+        { id: "clear10", icon: "🧹", name: "Clean Sweep",  desc: "Complete 10 tasks",          test: (s) => s.cleared >= 10 },
+        { id: "focus1",  icon: "⏱️", name: "Focused",      desc: "Finish a focus sprint",      test: (s) => s.sprints >= 1 },
+        { id: "focus5",  icon: "🧠", name: "Deep Worker",  desc: "Finish 5 focus sprints",     test: (s) => s.sprints >= 5 },
+        { id: "zero",    icon: "✨", name: "Empty Bag",    desc: "Clear everything to 0%",     test: (s) => s.reachedZero },
+        { id: "streak",  icon: "🔥", name: "On Fire",      desc: "Reach a 3-day streak",       test: (s) => s.streak >= 3 },
+        { id: "level5",  icon: "⚡", name: "Rising Star",  desc: "Reach level 5",              test: (s) => s.level >= 5 },
+        { id: "warlord", icon: "👑", name: "KUET Warlord", desc: "Reach the top rank",         test: (s) => s.level >= 10 },
+    ];
 
-    const fontIncreaseBtn = document.getElementById('font-increase');
-    const fontDecreaseBtn = document.getElementById('font-decrease');
-    const fontResetBtn = document.getElementById('font-reset');
+    const SEARCH_PLACEHOLDERS = [
+        "Search your backpack…",
+        "Search 'CT'…",
+        "Search 'assignment'…",
+        "Search 'drive link'…",
+        "Search a file name…",
+    ];
 
-    const clutterText = document.getElementById('clutter-text');
-    const progressFill = document.getElementById('progress-fill');
-    const clutterStatusMsg = document.getElementById('clutter-status-msg');
-    const streakCount = document.getElementById('streak-count');
-    const userRank = document.getElementById('user-rank');
-    const userLevel = document.getElementById('user-level');
-    const userXp = document.getElementById('user-xp');
-    const studyHoursLeft = document.getElementById('study-hours-left');
-    const digestText = document.getElementById('digest-text');
+    const TYPE_ICON = { Task: "✅", File: "📄", Link: "🔗", Note: "📝" };
 
-    const panicBtn = document.getElementById('panic-btn');
-    const urgentList = document.getElementById('urgent-list');
+    /* ------------------------------ STATE -------------------------------- */
+    let items = load(KEY.items, []);
+    let searches = load(KEY.searches, []);
+    let stats = load(KEY.stats, {
+        xp: 0, level: 1, rank: RANKS[0],
+        itemsAdded: 0, cleared: 0, sprints: 0,
+        streak: 1, reachedZero: false, lastVisit: null,
+    });
+    let unlockedBadges = load(KEY.badges, []);
 
-    const pomoMinutes = document.getElementById('pomo-minutes');
-    const pomoSeconds = document.getElementById('pomo-seconds');
-    const pomoStartBtn = document.getElementById('pomo-start-btn');
-    const pomoPauseBtn = document.getElementById('pomo-pause-btn');
-    const pomoResetBtn = document.getElementById('pomo-reset-btn');
-    const testChimeBtn = document.getElementById('test-chime-btn');
+    let currentPage = localStorage.getItem(KEY.page) || "dashboard";
+    let typeFilter = "all";
+    let courseFilter = "all";
+    let searchQuery = "";
+    let editingId = null;
+    let panicMode = false;
 
-    const exportJsonBtn = document.getElementById('export-json-btn');
-    const importJsonInput = document.getElementById('import-json-input');
-    const exportMdBtn = document.getElementById('export-md-btn');
-    const dumpsterList = document.getElementById('dumpster-list');
-    const emptyDumpsterBtn = document.getElementById('empty-dumpster-btn');
+    // Pomodoro
+    let pomoTotal = 25 * 60, pomoLeft = 25 * 60, pomoInterval = null, pomoRunning = false, pomoTaskId = null;
+    let sprintsToday = 0;
+    let phIndex = 0;
 
-    const addForm = document.getElementById('add-form');
-    const itemsContainer = document.getElementById('items-container');
-    const searchInput = document.getElementById('search-input');
-    const sortSelect = document.getElementById('sort-select');
-    const tagPills = document.querySelectorAll('.tag-pill');
+    /* ------------------------------ HELPERS ------------------------------ */
+    const $ = (id) => document.getElementById(id);
+    const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-    // --- INITIALIZATION ---
-    initTheme();
-    updateGamificationUI();
-    renderAll();
-    setupEventListeners();
+    function load(key, fallback) {
+        try {
+            const raw = localStorage.getItem(key);
+            return raw ? JSON.parse(raw) : JSON.parse(JSON.stringify(fallback));
+        } catch (e) {
+            console.log("[v0] load failed:", key, e.message);
+            return JSON.parse(JSON.stringify(fallback));
+        }
+    }
+    function save() {
+        localStorage.setItem(KEY.items, JSON.stringify(items));
+        localStorage.setItem(KEY.stats, JSON.stringify(stats));
+        localStorage.setItem(KEY.badges, JSON.stringify(unlockedBadges));
+    }
+    function esc(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+    function isURL(s) { return /^https?:\/\//i.test(String(s).trim()); }
+    function domainOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return null; } }
 
-    // ==========================================================================
-    // 1. SYSTEM CONTROLS, THEMING & ACCESSIBILITY
-    // ==========================================================================
-
-    function initTheme() {
-        const savedTheme = localStorage.getItem('backpackTheme') || 'theme-dark';
-        document.body.className = savedTheme;
-        if (themeSelect) themeSelect.value = savedTheme;
+    function prettify(name) {
+        if (isURL(name)) {
+            const d = domainOf(name);
+            return d ? d.charAt(0).toUpperCase() + d.slice(1) + " link" : "Web link";
+        }
+        return String(name)
+            .replace(/\.[a-z0-9]{2,5}$/i, "")
+            .replace(/[_\-]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .replace(/\b\w/g, (c) => c.toUpperCase()) || name;
     }
 
-    function setupEventListeners() {
-        // Theme Switcher
-        if (themeSelect) {
-            themeSelect.addEventListener('change', (e) => {
-                const selectedTheme = e.target.value;
-                document.body.className = selectedTheme;
-                localStorage.setItem('backpackTheme', selectedTheme);
-            });
-        }
+    function detectTags(text) {
+        const t = (text || "").toLowerCase();
+        const tags = [];
+        if (/\bct\b|class test/.test(t)) tags.push("#CT");
+        if (/lab|report/.test(t)) tags.push("#Lab");
+        if (/slide|ppt|presentation/.test(t)) tags.push("#Slides");
+        if (/assignment|hw|homework/.test(t)) tags.push("#Assignment");
+        if (/exam|final|midterm|quiz/.test(t)) tags.push("#Exam");
+        if (/note/.test(t)) tags.push("#Notes");
+        return [...new Set(tags)];
+    }
 
-        // Exam Mode Toggle
-        if (examModeBtn) {
-            examModeBtn.addEventListener('click', () => {
-                const isActive = examModeBtn.classList.toggle('active');
-                examModeBtn.textContent = isActive ? '🔥 Exam Week Mode: ON' : '🔥 Exam Week Mode: OFF';
-                examModeBtn.style.background = isActive ? 'var(--danger-color)' : '';
-                renderAll();
-            });
-        }
+    function autoPriority(item) {
+        if (!item.deadline) return item.type === "Task" ? "Medium" : "Low";
+        const hrs = (new Date(item.deadline) - new Date()) / 36e5;
+        if (hrs <= 24) return "High";
+        if (hrs <= 72) return "Medium";
+        return "Low";
+    }
+    function resolvedPriority(item) {
+        return (!item.priority || item.priority === "Auto") ? autoPriority(item) : item.priority;
+    }
+    function hoursLeft(item) {
+        if (!item.deadline) return Infinity;
+        return (new Date(item.deadline) - new Date()) / 36e5;
+    }
+    function fmtDeadline(iso) {
+        const d = new Date(iso);
+        const hrs = (d - new Date()) / 36e5;
+        const opts = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
+        if (hrs < 0) return "Overdue · " + d.toLocaleString(undefined, opts);
+        if (hrs < 24) return "Due in " + Math.max(1, Math.round(hrs)) + "h";
+        return "Due " + d.toLocaleString(undefined, opts);
+    }
 
-        // Zen Mode Toggle
-        if (zenModeBtn) {
-            zenModeBtn.addEventListener('click', () => {
-                const isZen = document.body.classList.toggle('zen-mode-active');
-                zenModeBtn.textContent = isZen ? '🧘 Zen Mode: ON' : '🧘 Zen Mode: OFF';
-                const sidebar = document.querySelector('.sidebar-engine');
-                const stats = document.querySelector('.stats-grid');
-                if (sidebar) sidebar.style.display = isZen ? 'none' : 'block';
-                if (stats) stats.style.display = isZen ? 'none' : 'grid';
-            });
-        }
-
-        // Font Resizer
-        if (fontIncreaseBtn) {
-            fontIncreaseBtn.addEventListener('click', () => {
-                if (currentFontSize < 22) {
-                    currentFontSize += 1;
-                    document.body.style.fontSize = `${currentFontSize}px`;
-                }
-            });
-        }
-
-        if (fontDecreaseBtn) {
-            fontDecreaseBtn.addEventListener('click', () => {
-                if (currentFontSize > 12) {
-                    currentFontSize -= 1;
-                    document.body.style.fontSize = `${currentFontSize}px`;
-                }
-            });
-        }
-
-        if (fontResetBtn) {
-            fontResetBtn.addEventListener('click', () => {
-                currentFontSize = 16;
-                document.body.style.fontSize = '16px';
-            });
-        }
-
-        // Online/Offline Listener
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-
-        // Form Submit
-        if (addForm) {
-            addForm.addEventListener('submit', handleAddItem);
-        }
-
-        // Search and Filters
-        if (searchInput) searchInput.addEventListener('input', renderItemsGrid);
-        if (sortSelect) sortSelect.addEventListener('change', renderItemsGrid);
-
-        tagPills.forEach(pill => {
-            pill.addEventListener('click', () => {
-                tagPills.forEach(p => p.classList.remove('active'));
-                pill.classList.add('active');
-                activeTagFilter = pill.getAttribute('data-filter');
-                renderItemsGrid();
-            });
+    /* ------------------------------ ROUTER ------------------------------- */
+    function switchPage(page) {
+        if (!page) return;
+        currentPage = page;
+        qsa(".page").forEach((p) => {
+            const on = p.id === page;
+            p.hidden = !on;
+            p.classList.toggle("active", on);
         });
-
-        // Panic Mode
-        if (panicBtn) {
-            panicBtn.addEventListener('click', () => {
-                alert('🚨 PANIC MODE ACTIVATED: Isolating items due within 12 hours.');
-                searchInput.value = '';
-                activeTagFilter = 'all';
-                renderUrgentList(true);
-            });
-        }
-
-        // Timer Controls
-        if (pomoStartBtn) pomoStartBtn.addEventListener('click', startTimer);
-        if (pomoPauseBtn) pomoPauseBtn.addEventListener('click', pauseTimer);
-        if (pomoResetBtn) pomoResetBtn.addEventListener('click', resetTimer);
-        if (testChimeBtn) testChimeBtn.addEventListener('click', playChime);
-
-        // Backup Controls
-        if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportJSON);
-        if (importJsonInput) importJsonInput.addEventListener('change', importJSON);
-        if (exportMdBtn) exportMdBtn.addEventListener('click', copyMarkdownChecklist);
-        if (emptyDumpsterBtn) emptyDumpsterBtn.addEventListener('click', clearDumpster);
+        qsa(".nav-tab").forEach((t) => t.classList.toggle("active", t.dataset.page === page));
+        localStorage.setItem(KEY.page, page);
+        $("nav-tabs-close")?.();
+        document.querySelector(".nav-tabs")?.classList.remove("open");
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    function updateOnlineStatus() {
-        if (navigator.onLine) {
-            syncStatusDot.className = 'status-dot online';
-            statusText.textContent = 'Offline Ready (Local Storage Active)';
-        } else {
-            syncStatusDot.className = 'status-dot offline';
-            statusText.textContent = 'Offline Mode (Changes saved locally)';
+    /* ------------------------------ TOASTS ------------------------------- */
+    function toast(msg, type = "info", ms = 2600) {
+        const host = $("toast-host");
+        if (!host) return;
+        const el = document.createElement("div");
+        el.className = "toast " + type;
+        el.textContent = msg;
+        host.appendChild(el);
+        setTimeout(() => {
+            el.style.opacity = "0";
+            el.style.transform = "translateX(20px)";
+            setTimeout(() => el.remove(), 300);
+        }, ms);
+    }
+
+    function confetti() {
+        const host = $("confetti");
+        if (!host) return;
+        const colors = ["#2dd4bf", "#c084fc", "#fbbf24", "#34d399", "#fb7185"];
+        for (let i = 0; i < 40; i++) {
+            const s = document.createElement("span");
+            s.style.left = Math.random() * 100 + "vw";
+            s.style.background = colors[i % colors.length];
+            s.style.animationDuration = 1.6 + Math.random() * 1.4 + "s";
+            s.style.animationDelay = Math.random() * 0.3 + "s";
+            host.appendChild(s);
+            setTimeout(() => s.remove(), 3200);
         }
     }
 
-    // ==========================================================================
-    // 2. DATA MANIPULATION & ITEM ADDITION
-    // ==========================================================================
-
-    function handleAddItem(e) {
-        e.preventDefault();
-
-        const nameInput = document.getElementById('item-name');
-        const contextInput = document.getElementById('item-context');
-        const courseInput = document.getElementById('item-course');
-        const typeInput = document.getElementById('item-type');
-        const dateInput = document.getElementById('item-date');
-        const timeCostInput = document.getElementById('item-time-cost');
-        const priorityInput = document.getElementById('item-priority');
-
-        const newItem = {
-            id: 'item_' + Date.now(),
-            name: nameInput.value.trim(),
-            context: contextInput.value.trim() || 'No description provided.',
-            course: courseInput.value,
-            type: typeInput.value,
-            deadline: dateInput.value ? new Date(dateInput.value).toISOString() : null,
-            timeCost: parseInt(timeCostInput.value, 10) || 30,
-            priority: priorityInput.value,
+    /* ------------------------------ ITEM CRUD ---------------------------- */
+    function makeItem(data) {
+        const name = data.name.trim();
+        const type = data.type || (isURL(name) ? "Link" : "File");
+        return {
+            id: "i_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+            name,
+            context: (data.context || "").trim() || prettify(name),
+            type,
+            course: (data.course || "").trim(),
+            deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
+            priority: data.priority || "Auto",
+            tags: detectTags(name + " " + (data.context || "")),
             completed: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
+    }
 
-        backpackItems.unshift(newItem);
-        saveState();
-
-        // Award XP for adding items
+    function addItem(data) {
+        const item = makeItem(data);
+        items.unshift(item);
+        stats.itemsAdded++;
         addXP(15);
+        save();
+        renderAll();
+        toast('Added "' + item.context + '"', "success");
+    }
 
-        addForm.reset();
+    function updateItem(id, data) {
+        const item = items.find((i) => i.id === id);
+        if (!item) return;
+        item.name = data.name.trim();
+        item.context = (data.context || "").trim() || prettify(item.name);
+        item.type = data.type;
+        item.course = (data.course || "").trim();
+        item.deadline = data.deadline ? new Date(data.deadline).toISOString() : null;
+        item.priority = data.priority;
+        item.tags = detectTags(item.name + " " + item.context);
+        save();
+        renderAll();
+        toast("Item updated", "success");
+    }
+
+    function deleteItem(id) {
+        const idx = items.findIndex((i) => i.id === id);
+        if (idx === -1) return;
+        if (pomoTaskId === id) { pomoTaskId = null; $("pomo-task").textContent = "nothing selected"; }
+        items.splice(idx, 1);
+        save();
+        renderAll();
+        toast("Item removed", "warn");
+    }
+
+    function toggleComplete(id) {
+        const item = items.find((i) => i.id === id);
+        if (!item) return;
+        item.completed = !item.completed;
+        if (item.completed) {
+            stats.cleared++;
+            addXP(20);
+            confetti();
+            toast('Cleared "' + item.context + '"', "success");
+        }
+        const open = items.filter((i) => !i.completed).length;
+        if (items.length > 0 && open === 0) stats.reachedZero = true;
+        save();
         renderAll();
     }
 
-    function saveState() {
-        localStorage.setItem('backpackItems', JSON.stringify(backpackItems));
-        localStorage.setItem('dumpsterItems', JSON.stringify(dumpsterItems));
-        localStorage.setItem('userStats', JSON.stringify(userStats));
-    }
-
+    /* ------------------------------ GAMIFICATION ------------------------- */
     function addXP(amount) {
-        userStats.xp += amount;
-        if (userStats.xp >= 100) {
-            userStats.level += 1;
-            userStats.xp -= 100;
-            updateRankTitle();
-            triggerConfetti();
+        stats.xp += amount;
+        while (stats.xp >= XP_PER_LEVEL) {
+            stats.xp -= XP_PER_LEVEL;
+            stats.level++;
+            stats.rank = RANKS[Math.min(Math.floor((stats.level - 1) / 2), RANKS.length - 1)];
+            toast("⬆️ Level up! Now level " + stats.level + " — " + stats.rank, "success", 3200);
+            confetti();
         }
-        updateGamificationUI();
-        saveState();
+        checkBadges();
+        renderAchievements();
+        save();
     }
 
-    function updateRankTitle() {
-        const ranks = ['Lab Muggle', 'Cadet Scholar', 'Assignment Knight', 'CT Conqueror', 'KUET Warlord'];
-        const index = Math.min(Math.floor((userStats.level - 1) / 2), ranks.length - 1);
-        userStats.rank = ranks[index];
+    function checkBadges() {
+        const ctx = { ...stats, streak: stats.streak };
+        ACHIEVEMENTS.forEach((a) => {
+            if (!unlockedBadges.includes(a.id) && a.test(ctx)) {
+                unlockedBadges.push(a.id);
+                toast("🏆 Badge unlocked: " + a.name, "success", 3200);
+            }
+        });
     }
 
-    function updateGamificationUI() {
-        if (streakCount) streakCount.textContent = `${userStats.streak} Days`;
-        if (userRank) userRank.textContent = userStats.rank;
-        if (userLevel) userLevel.textContent = userStats.level;
-        if (userXp) userXp.textContent = userStats.xp;
+    function dailyStreak() {
+        const today = new Date().toDateString();
+        if (stats.lastVisit === today) return;
+        if (stats.lastVisit) {
+            const diff = (new Date(today) - new Date(stats.lastVisit)) / 864e5;
+            if (diff === 1) stats.streak++;
+            else if (diff > 1) stats.streak = 1;
+        }
+        stats.lastVisit = today;
+        save();
     }
 
-    // ==========================================================================
-    // 3. RENDER ENGINES (CLUTTER, MATRIX, GRID, DUMPSTER)
-    // ==========================================================================
-
+    /* ------------------------------ RENDERING ---------------------------- */
     function renderAll() {
-        renderClutterGauge();
-        renderUrgentList();
-        renderEisenhowerMatrix();
-        renderItemsGrid();
-        renderDumpster();
-        updateDailyDigest();
+        renderDashboard();
+        renderLibrary();
+        renderCourseFilters();
+        renderCourseDatalist();
+        renderAchievements();
     }
 
-    function renderClutterGauge() {
-        const activeItems = backpackItems.filter(i => !i.completed);
-        const maxCapacity = 15; // Set capacity limit for gauge baseline
-        const clutterPercentage = Math.min(Math.round((activeItems.length / maxCapacity) * 100), 100);
+    function renderDashboard() {
+        const open = items.filter((i) => !i.completed);
+        const done = items.filter((i) => i.completed);
+        const total = items.length;
 
-        if (clutterText) clutterText.textContent = `${clutterPercentage}%`;
-        if (progressFill) {
-            progressFill.style.width = `${clutterPercentage}%`;
-            if (clutterPercentage > 75) {
-                progressFill.style.background = 'var(--danger-color)';
-            } else if (clutterPercentage > 40) {
-                progressFill.style.background = 'var(--warning-color)';
-            } else {
-                progressFill.style.background = 'var(--accent-color)';
-            }
-        }
+        // clutter gauge — scales open items up to a comfortable cap of 12
+        const pct = total === 0 ? 0 : Math.min(100, Math.round((open.length / 12) * 100));
+        $("clutter-pct").textContent = pct + "%";
+        $("gauge-fill").style.width = pct + "%";
+        $("stat-open").textContent = open.length;
+        $("stat-done").textContent = done.length;
+        $("stat-total").textContent = total;
+        $("clutter-msg").textContent =
+            total === 0 ? "Clean & clear — nothing pending." :
+            pct < 34 ? "Light load. You're on top of it." :
+            pct < 67 ? "Filling up — knock out a few today." :
+            "Heavy backpack. Time to prioritize!";
 
-        if (clutterStatusMsg) {
-            if (clutterPercentage === 0) clutterStatusMsg.textContent = 'Clean & Clear!';
-            else if (clutterPercentage < 50) clutterStatusMsg.textContent = 'Backpack under control.';
-            else if (clutterPercentage < 80) clutterStatusMsg.textContent = 'Warning: Backpack getting heavy!';
-            else clutterStatusMsg.textContent = 'CRITICAL: Clear finished items now!';
-        }
-
-        // Time Budgeting Calculation
-        const totalMinutes = activeItems.reduce((acc, item) => acc + item.timeCost, 0);
-        const totalHours = (totalMinutes / 60).toFixed(1);
-        if (studyHoursLeft) studyHoursLeft.textContent = `${totalHours} hrs`;
+        renderPanic();
+        renderMatrix();
     }
 
-    function renderUrgentList(forcePanic = false) {
-        if (!urgentList) return;
-        const now = new Date();
-
-        const urgentItems = backpackItems.filter(item => {
-            if (item.completed || !item.deadline) return false;
-            const diffHours = (new Date(item.deadline) - now) / (1000 * 60 * 60);
-            return forcePanic ? diffHours <= 12 && diffHours > -24 : diffHours <= 24 && diffHours > -24;
-        });
-
-        if (urgentItems.length === 0) {
-            urgentList.innerHTML = '<p class="empty-state">No urgent deadlines right now! Relax or prep ahead.</p>';
+    function renderPanic() {
+        const host = $("panic-list");
+        const urgent = items
+            .filter((i) => !i.completed && hoursLeft(i) <= 12)
+            .sort((a, b) => hoursLeft(a) - hoursLeft(b));
+        if (!urgent.length) {
+            host.innerHTML = '<p class="empty">No fires right now. Breathe.</p>';
             return;
         }
-
-        urgentList.innerHTML = urgentItems.map(item => `
-            <div class="urgent-item-pill" style="border-left: 3px solid var(--danger-color); padding: 6px; margin-bottom: 6px; background: var(--bg-primary); border-radius: 4px;">
-                <strong>${escapeHTML(item.name)}</strong>
-                <br><small>Due: ${new Date(item.deadline).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
-            </div>
-        `).join('');
+        host.innerHTML = urgent.map(panicRow).join("");
     }
 
-    function renderEisenhowerMatrix() {
-        const q1 = document.getElementById('quadrant-q1');
-        const q2 = document.getElementById('quadrant-q2');
-        const q3 = document.getElementById('quadrant-q3');
-        const q4 = document.getElementById('quadrant-q4');
+    function panicRow(i) {
+        return '<div class="panic-item">' +
+            '<div class="mi-main"><div class="mi-title">' + esc(i.context) + '</div>' +
+            '<div class="mi-meta">' + esc(fmtDeadline(i.deadline)) + '</div></div>' +
+            '<button class="mi-play" data-focus="' + i.id + '">Focus</button></div>';
+    }
 
-        if (!q1 || !q2 || !q3 || !q4) return;
-
-        [q1, q2, q3, q4].forEach(el => el.innerHTML = '');
-
-        const now = new Date();
-
-        backpackItems.filter(i => !i.completed).forEach(item => {
-            const isUrgent = item.deadline && ((new Date(item.deadline) - now) / (1000 * 60 * 60)) <= 24;
-            const isImportant = item.priority === 'High' || item.type === 'Task';
-
-            const card = document.createElement('div');
-            card.className = 'matrix-item';
-            card.style.cssText = 'background: var(--bg-primary); padding: 6px; margin-bottom: 4px; border-radius: 4px; font-size: 0.8rem;';
-            card.innerHTML = `<strong>${escapeHTML(item.name)}</strong> <small>(${item.course})</small>`;
-
-            if (isUrgent && isImportant) q1.appendChild(card);
-            else if (!isUrgent && isImportant) q2.appendChild(card);
-            else if (isUrgent && !isImportant) q3.appendChild(card);
-            else q4.appendChild(card);
+    function renderMatrix() {
+        const q = { q1: [], q2: [], q3: [], q4: [] };
+        items.filter((i) => !i.completed).forEach((i) => {
+            const p = resolvedPriority(i);
+            const urgent = hoursLeft(i) <= 48;
+            if (urgent && p === "High") q.q1.push(i);
+            else if (p === "High" || p === "Medium") q.q2.push(i);
+            else if (urgent) q.q3.push(i);
+            else q.q4.push(i);
+        });
+        ["q1", "q2", "q3", "q4"].forEach((k) => {
+            const host = $(k);
+            host.innerHTML = q[k].length
+                ? q[k].map(matrixRow).join("")
+                : '<p class="empty">Empty</p>';
         });
     }
 
-    function renderItemsGrid() {
-        if (!itemsContainer) return;
+    function matrixRow(i) {
+        const meta = i.deadline ? fmtDeadline(i.deadline) : (i.course || i.type);
+        return '<div class="matrix-item">' +
+            '<div class="mi-main"><div class="mi-title">' + esc(i.context) + '</div>' +
+            '<div class="mi-meta">' + esc(meta) + '</div></div>' +
+            '<button class="mi-play" data-focus="' + i.id + '">▶</button></div>';
+    }
 
-        let filtered = [...backpackItems];
-        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    function renderCourseFilters() {
+        const host = $("course-filters");
+        const courses = [...new Set(items.map((i) => i.course).filter(Boolean))].sort();
+        let html = '<button class="chip' + (courseFilter === "all" ? " active" : "") + '" data-course="all">All courses</button>';
+        html += courses.map((c) =>
+            '<button class="chip' + (courseFilter === c ? " active" : "") + '" data-course="' + esc(c) + '">' + esc(c) + '</button>'
+        ).join("");
+        host.innerHTML = html;
+    }
 
-        // Tag Filter
-        if (activeTagFilter !== 'all') {
-            filtered = filtered.filter(item => 
-                item.name.toLowerCase().includes(activeTagFilter.toLowerCase()) ||
-                item.context.toLowerCase().includes(activeTagFilter.toLowerCase())
+    function renderCourseDatalist() {
+        const dl = $("course-list");
+        const courses = [...new Set(items.map((i) => i.course).filter(Boolean))].sort();
+        dl.innerHTML = courses.map((c) => '<option value="' + esc(c) + '">').join("");
+    }
+
+    function renderLibrary() {
+        const host = $("library");
+        let list = items.slice();
+
+        if (typeFilter !== "all") list = list.filter((i) => i.type === typeFilter);
+        if (courseFilter !== "all") list = list.filter((i) => i.course === courseFilter);
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter((i) =>
+                (i.name + " " + i.context + " " + i.course + " " + i.tags.join(" ")).toLowerCase().includes(q)
             );
         }
 
-        // Search Query
-        if (query) {
-            filtered = filtered.filter(item => 
-                item.name.toLowerCase().includes(query) ||
-                item.context.toLowerCase().includes(query) ||
-                item.course.toLowerCase().includes(query)
-            );
+        if (!items.length) {
+            host.innerHTML =
+                '<div class="empty-block"><div class="empty-emoji">🎒</div>' +
+                '<h3>Your backpack is empty</h3><p>Hit <b>+ Add</b> to drop in your first file, link, note or task.</p></div>';
+            return;
+        }
+        if (!list.length) {
+            host.innerHTML =
+                '<div class="empty-block"><div class="empty-emoji">🔍</div>' +
+                '<h3>Nothing matches</h3><p>Try a different filter or search term.</p></div>';
+            return;
         }
 
-        // Sorting
-        const sortVal = sortSelect ? sortSelect.value : 'deadline';
-        filtered.sort((a, b) => {
-            if (sortVal === 'deadline') {
-                if (!a.deadline) return 1;
-                if (!b.deadline) return -1;
-                return new Date(a.deadline) - new Date(b.deadline);
-            }
-            if (sortVal === 'date-added') return new Date(b.createdAt) - new Date(a.createdAt);
-            if (sortVal === 'alpha') return a.name.localeCompare(b.name);
-            return 0;
+        // incomplete first, then by nearest deadline
+        list.sort((a, b) => {
+            if (a.completed !== b.completed) return a.completed ? 1 : -1;
+            return hoursLeft(a) - hoursLeft(b);
         });
+        host.innerHTML = list.map(itemCard).join("");
+    }
 
-        if (filtered.length === 0) {
-            itemsContainer.innerHTML = '<p class="empty-state">No items match your query.</p>';
-            return;
+    function itemCard(i) {
+        const icon = TYPE_ICON[i.type] || "📄";
+        const tags = [];
+        if (i.course) tags.push('<span class="tag course">' + esc(i.course) + '</span>');
+        i.tags.forEach((t) => tags.push('<span class="tag">' + esc(t) + '</span>'));
+        if (i.deadline) {
+            const overdue = hoursLeft(i) < 0 ? " overdue" : "";
+            tags.push('<span class="tag deadline' + overdue + '">' + esc(fmtDeadline(i.deadline)) + '</span>');
         }
-
-        itemsContainer.innerHTML = filtered.map(item => `
-            <div class="stat-card item-card ${item.completed ? 'completed-card' : ''}">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <span class="badge blue">${item.type}</span>
-                    <small style="color: var(--text-secondary);">${item.course}</small>
-                </div>
-                <h4 style="margin: 8px 0 4px; font-size: 1rem;">${escapeHTML(item.name)}</h4>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px;">${escapeHTML(item.context)}</p>
-                <small style="display: block; margin-bottom: 8px;">⏱️ Est: ${item.timeCost} mins</small>
-                
-                <div style="display: flex; gap: 6px; margin-top: auto;">
-                    <button onclick="toggleComplete('${item.id}')" class="action-btn start" style="font-size: 0.75rem; padding: 4px;">${item.completed ? '↩️ Undo' : '✅ Done'}</button>
-                    <button onclick="attachToPomodoro('${escapeHTML(item.name)}')" class="action-btn reset" style="font-size: 0.75rem; padding: 4px;">⏱️ Study</button>
-                    <button onclick="deleteItem('${item.id}')" class="action-btn pause" style="background: var(--danger-color); font-size: 0.75rem; padding: 4px;">🗑️ Delete</button>
-                </div>
-            </div>
-        `).join('');
+        const openLink = isURL(i.name)
+            ? '<a href="' + esc(i.name) + '" target="_blank" rel="noopener">Open</a>'
+            : '';
+        return '<article class="item-card' + (i.completed ? " done" : "") + '" data-id="' + i.id + '">' +
+            '<div class="item-top"><span class="item-icon">' + icon + '</span>' +
+            '<div class="item-heading"><div class="item-context">' + esc(i.context) + '</div>' +
+            '<div class="item-name">' + esc(i.name) + '</div></div></div>' +
+            (tags.length ? '<div class="item-tags">' + tags.join("") + '</div>' : '') +
+            '<div class="item-actions">' +
+            '<button class="act-done' + (i.completed ? " is-done" : "") + '" data-done="' + i.id + '">' + (i.completed ? "Done ✓" : "Complete") + '</button>' +
+            '<button data-focusitem="' + i.id + '">Focus</button>' +
+            openLink +
+            '<button data-edit="' + i.id + '">Edit</button>' +
+            '<button data-del="' + i.id + '">Delete</button>' +
+            '</div></article>';
     }
 
-    function renderDumpster() {
-        if (!dumpsterList) return;
-        if (dumpsterItems.length === 0) {
-            dumpsterList.innerHTML = '<small class="empty-state">Dumpster is empty.</small>';
-            return;
-        }
+    function renderAchievements() {
+        $("rank-name").textContent = stats.rank;
+        $("level-num").textContent = stats.level;
+        $("xp-now").textContent = stats.xp;
+        $("xp-max").textContent = XP_PER_LEVEL;
+        $("xp-fill").style.width = (stats.xp / XP_PER_LEVEL) * 100 + "%";
+        $("streak-days").textContent = stats.streak;
+        $("total-sprints").textContent = stats.sprints;
 
-        dumpsterList.innerHTML = dumpsterItems.map(item => `
-            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 4px; background: var(--bg-primary); padding: 4px 8px; border-radius: 4px;">
-                <span>${escapeHTML(item.name)}</span>
-                <button onclick="restoreFromDumpster('${item.id}')" style="background: none; border: none; color: var(--accent-color); cursor: pointer; font-size: 0.75rem;">Restore</button>
-            </div>
-        `).join('');
+        $("badges-grid").innerHTML = ACHIEVEMENTS.map((a) => {
+            const unlocked = unlockedBadges.includes(a.id);
+            return '<div class="badge-card' + (unlocked ? "" : " locked") + '">' +
+                '<div class="b-icon">' + a.icon + '</div>' +
+                '<div class="b-name">' + esc(a.name) + '</div>' +
+                '<div class="b-desc">' + esc(a.desc) + '</div></div>';
+        }).join("");
     }
 
-    function updateDailyDigest() {
-        if (!digestText) return;
-        const activeTasks = backpackItems.filter(i => !i.completed);
-        const urgentCount = activeTasks.filter(i => i.priority === 'High' || i.type === 'Task').length;
-        digestText.innerHTML = `Good day, Warrior! You have <strong>${urgentCount} high priority items</strong> and <strong>${activeTasks.length} total tasks</strong> in your backpack.`;
+    /* ------------------------------ SEARCH HISTORY ----------------------- */
+    function saveSearch(q) {
+        q = (q || "").trim();
+        if (q.length < 2) return;
+        searches = [q, ...searches.filter((s) => s.toLowerCase() !== q.toLowerCase())].slice(0, 8);
+        localStorage.setItem(KEY.searches, JSON.stringify(searches));
+        renderSearchHistory();
     }
-
-    // ==========================================================================
-    // 4. POMODORO TIMER ENGINE
-    // ==========================================================================
-
-    function updateTimerDisplay() {
-        const mins = Math.floor(timerSecondsLeft / 60);
-        const secs = timerSecondsLeft % 60;
-        if (pomoMinutes) pomoMinutes.textContent = String(mins).padStart(2, '0');
-        if (pomoSeconds) pomoSeconds.textContent = String(secs).padStart(2, '0');
+    function renderSearchHistory() {
+        const list = $("search-history-list");
+        list.innerHTML = searches.length
+            ? searches.map((s) => '<button type="button" class="history-chip" data-q="' + esc(s) + '">' + esc(s) + '</button>').join("")
+            : '<span class="hint">No recent searches yet.</span>';
     }
+    function showHistory() { renderSearchHistory(); $("search-history").hidden = false; }
+    function hideHistory() { $("search-history").hidden = true; }
 
-    function startTimer() {
-        if (isTimerRunning) return;
-        isTimerRunning = true;
-        timerInterval = setInterval(() => {
-            if (timerSecondsLeft > 0) {
-                timerSecondsLeft--;
-                updateTimerDisplay();
-            } else {
-                clearInterval(timerInterval);
-                isTimerRunning = false;
-                playChime();
-                addXP(25); // Award XP for completing a study session
-                alert('⏱️ Pomodoro Sprint Completed! Take a 5-minute break.');
+    /* ------------------------------ POMODORO ----------------------------- */
+    function fmtTime(sec) {
+        const m = String(Math.floor(sec / 60)).padStart(2, "0");
+        const s = String(sec % 60).padStart(2, "0");
+        return m + ":" + s;
+    }
+    function renderPomo() { $("pomo-display").textContent = fmtTime(pomoLeft); }
+    function startPomo() {
+        if (pomoRunning) return;
+        pomoRunning = true;
+        pomoInterval = setInterval(() => {
+            pomoLeft--;
+            renderPomo();
+            if (pomoLeft <= 0) {
+                clearInterval(pomoInterval);
+                pomoRunning = false;
+                sprintsToday++;
+                stats.sprints++;
+                $("pomo-count").textContent = sprintsToday;
+                addXP(25);
+                confetti();
+                toast("⏱️ Sprint complete! +25 XP", "success", 3200);
+                pomoLeft = pomoTotal;
+                renderPomo();
             }
         }, 1000);
     }
-
-    function pauseTimer() {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
+    function pausePomo() { pomoRunning = false; clearInterval(pomoInterval); }
+    function resetPomo() { pausePomo(); pomoLeft = pomoTotal; renderPomo(); }
+    function setPomoTask(id) {
+        const item = items.find((i) => i.id === id);
+        if (!item) return;
+        pomoTaskId = id;
+        $("pomo-task").textContent = item.context;
+        if (currentPage !== "dashboard") switchPage("dashboard");
+        toast("Focus set to: " + item.context, "info");
     }
 
-    function resetTimer() {
-        pauseTimer();
-        timerSecondsLeft = 25 * 60;
-        updateTimerDisplay();
+    /* ------------------------------ MODAL -------------------------------- */
+    function openModal(id) {
+        editingId = id || null;
+        $("modal-title").textContent = id ? "Edit item" : "Add to backpack";
+        const item = id ? items.find((i) => i.id === id) : null;
+        $("f-name").value = item ? item.name : "";
+        $("f-context").value = item ? item.context : "";
+        $("f-type").value = item ? item.type : "Task";
+        $("f-course").value = item ? item.course : "";
+        $("f-priority").value = item ? item.priority : "Auto";
+        $("f-deadline").value = item && item.deadline ? toLocalInput(item.deadline) : "";
+        $("add-overlay").hidden = false;
+        setTimeout(() => $("f-name").focus(), 50);
+    }
+    function closeModal() { $("add-overlay").hidden = true; editingId = null; $("add-form").reset(); }
+    function toLocalInput(iso) {
+        const d = new Date(iso);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 16);
     }
 
-    function playChime() {
-        const context = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = context.createOscillator();
-        const gain = context.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, context.currentTime); // D5 note
-        gain.gain.setValueAtTime(0.1, context.currentTime);
-        osc.connect(gain);
-        gain.connect(context.destination);
-        osc.start();
-        osc.stop(context.currentTime + 0.5);
-    }
-
-    // ==========================================================================
-    // 5. GLOBAL HANDLERS (EXPOSED TO WINDOW)
-    // ==========================================================================
-
-    window.toggleComplete = function(id) {
-        const item = backpackItems.find(i => i.id === id);
-        if (item) {
-            item.completed = !item.completed;
-            if (item.completed) addXP(20);
-            saveState();
-            renderAll();
-        }
-    };
-
-    window.deleteItem = function(id) {
-        const index = backpackItems.findIndex(i => i.id === id);
-        if (index !== -1) {
-            const removed = backpackItems.splice(index, 1)[0];
-            dumpsterItems.unshift(removed);
-            saveState();
-            renderAll();
-        }
-    };
-
-    window.restoreFromDumpster = function(id) {
-        const index = dumpsterItems.findIndex(i => i.id === id);
-        if (index !== -1) {
-            const restored = dumpsterItems.splice(index, 1)[0];
-            backpackItems.unshift(restored);
-            saveState();
-            renderAll();
-        }
-    };
-
-    window.attachToPomodoro = function(taskName) {
-        const activeLabel = document.getElementById('pomo-active-task');
-        if (activeLabel) activeLabel.textContent = taskName;
-        resetTimer();
-    };
-
-    function clearDumpster() {
-        if (confirm('Permanently delete all items in the dumpster?')) {
-            dumpsterItems = [];
-            saveState();
-            renderDumpster();
-        }
-    }
-
-    // ==========================================================================
-    // 6. BACKUP, EXPORT & UTILITIES
-    // ==========================================================================
-
+    /* ------------------------------ DATA I/O ----------------------------- */
     function exportJSON() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backpackItems, null, 2));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `digital_backpack_backup_${Date.now()}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
+        const payload = { items, stats, badges: unlockedBadges, exportedAt: new Date().toISOString() };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "digital-backpack-backup.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast("Backup exported", "success");
     }
-
-    function importJSON(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
+    function importJSON(file) {
         const reader = new FileReader();
-        reader.onload = function(evt) {
+        reader.onload = () => {
             try {
-                const imported = JSON.parse(evt.target.result);
-                if (Array.isArray(imported)) {
-                    backpackItems = imported;
-                    saveState();
-                    renderAll();
-                    alert('Successfully imported items!');
-                } else {
-                    alert('Invalid JSON format.');
-                }
-            } catch (err) {
-                alert('Error reading JSON file.');
+                const data = JSON.parse(reader.result);
+                if (Array.isArray(data.items)) items = data.items;
+                if (data.stats) stats = { ...stats, ...data.stats };
+                if (Array.isArray(data.badges)) unlockedBadges = data.badges;
+                save();
+                renderAll();
+                toast("Backup imported", "success");
+            } catch (e) {
+                toast("Invalid backup file", "danger");
             }
         };
         reader.readAsText(file);
     }
+    function exportMarkdown() {
+        if (!items.length) { toast("Nothing to export yet", "warn"); return; }
+        let md = "# The Digital Backpack\n\n";
+        const open = items.filter((i) => !i.completed);
+        const done = items.filter((i) => i.completed);
+        md += "## To do\n";
+        md += open.length ? open.map((i) => "- [ ] " + i.context + (i.deadline ? " (" + fmtDeadline(i.deadline) + ")" : "")).join("\n") : "- (nothing)";
+        md += "\n\n## Done\n";
+        md += done.length ? done.map((i) => "- [x] " + i.context).join("\n") : "- (nothing)";
+        navigator.clipboard?.writeText(md).then(
+            () => toast("Markdown checklist copied", "success"),
+            () => toast("Copy failed — clipboard blocked", "danger")
+        );
+    }
+    function resetAll() {
+        if (!confirm("Reset everything? This permanently deletes all items, stats and badges.")) return;
+        items = []; searches = []; unlockedBadges = [];
+        stats = { xp: 0, level: 1, rank: RANKS[0], itemsAdded: 0, cleared: 0, sprints: 0, streak: 1, reachedZero: false, lastVisit: new Date().toDateString() };
+        localStorage.removeItem(KEY.searches);
+        save();
+        renderAll();
+        renderSearchHistory();
+        toast("Everything reset", "warn");
+    }
 
-    function copyMarkdownChecklist() {
-        const markdown = backpackItems.map(item => `- [${item.completed ? 'x' : ' '}] ${item.name} (${item.course}) - Due: ${item.deadline ? new Date(item.deadline).toLocaleDateString() : 'N/A'}`).join('\n');
-        navigator.clipboard.writeText(markdown).then(() => {
-            alert('Copied Markdown checklist to clipboard!');
+    /* ------------------------------ THEME -------------------------------- */
+    function applyTheme(theme) {
+        document.body.className = theme;
+        document.documentElement.className = theme;
+        localStorage.setItem(KEY.theme, theme);
+        $("theme-select").value = theme;
+    }
+
+    /* ------------------------------ EVENTS ------------------------------- */
+    function bind() {
+        // navigation
+        qsa("[data-page]").forEach((el) => {
+            el.addEventListener("click", (e) => { e.preventDefault(); switchPage(el.dataset.page); });
+        });
+
+        // mobile menu
+        $("menu-btn").addEventListener("click", () => document.querySelector(".nav-tabs").classList.toggle("open"));
+
+        // theme
+        $("theme-select").addEventListener("change", (e) => applyTheme(e.target.value));
+
+        // add / modal
+        $("add-btn").addEventListener("click", () => openModal(null));
+        $("close-modal").addEventListener("click", closeModal);
+        $("cancel-modal").addEventListener("click", closeModal);
+        $("add-overlay").addEventListener("click", (e) => { if (e.target.id === "add-overlay") closeModal(); });
+        $("add-form").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const data = {
+                name: $("f-name").value,
+                context: $("f-context").value,
+                type: $("f-type").value,
+                course: $("f-course").value,
+                deadline: $("f-deadline").value,
+                priority: $("f-priority").value,
+            };
+            if (!data.name.trim()) return;
+            if (editingId) updateItem(editingId, data);
+            else addItem(data);
+            closeModal();
+        });
+
+        // search
+        const search = $("search-input");
+        search.addEventListener("input", (e) => { searchQuery = e.target.value; renderLibrary(); });
+        search.addEventListener("focus", showHistory);
+        search.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.nativeEvent?.isComposing && e.keyCode !== 229) {
+                saveSearch(search.value);
+                if (currentPage !== "academic-hub") switchPage("academic-hub");
+                hideHistory();
+            }
+        });
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".search-wrap")) hideHistory();
+        });
+        $("search-history-list").addEventListener("click", (e) => {
+            const chip = e.target.closest(".history-chip");
+            if (!chip) return;
+            search.value = chip.dataset.q;
+            searchQuery = chip.dataset.q;
+            if (currentPage !== "academic-hub") switchPage("academic-hub");
+            renderLibrary();
+            hideHistory();
+        });
+        $("clear-history-btn").addEventListener("click", () => {
+            searches = [];
+            localStorage.removeItem(KEY.searches);
+            renderSearchHistory();
+            toast("Search history cleared", "info");
+        });
+
+        // filters (delegated)
+        $("type-filters").addEventListener("click", (e) => {
+            const chip = e.target.closest(".chip");
+            if (!chip) return;
+            typeFilter = chip.dataset.type;
+            qsa("#type-filters .chip").forEach((c) => c.classList.toggle("active", c === chip));
+            renderLibrary();
+        });
+        $("course-filters").addEventListener("click", (e) => {
+            const chip = e.target.closest(".chip");
+            if (!chip) return;
+            courseFilter = chip.dataset.course;
+            renderCourseFilters();
+            renderLibrary();
+        });
+
+        // library actions (delegated)
+        $("library").addEventListener("click", (e) => {
+            const t = e.target;
+            if (t.dataset.done) toggleComplete(t.dataset.done);
+            else if (t.dataset.del) deleteItem(t.dataset.del);
+            else if (t.dataset.edit) openModal(t.dataset.edit);
+            else if (t.dataset.focusitem) setPomoTask(t.dataset.focusitem);
+        });
+
+        // dashboard focus buttons (delegated)
+        $("dashboard").addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-focus]");
+            if (btn) setPomoTask(btn.dataset.focus);
+        });
+
+        // panic
+        $("panic-toggle").addEventListener("change", (e) => {
+            panicMode = e.target.checked;
+            document.querySelector(".matrix-card").style.display = panicMode ? "none" : "";
+            toast(panicMode ? "Panic mode on — next 12 hours only" : "Panic mode off", panicMode ? "warn" : "info");
+        });
+
+        // pomodoro
+        $("pomo-start").addEventListener("click", startPomo);
+        $("pomo-pause").addEventListener("click", pausePomo);
+        $("pomo-reset").addEventListener("click", resetPomo);
+        qsa(".pomo-modes .chip").forEach((chip) => {
+            chip.addEventListener("click", () => {
+                qsa(".pomo-modes .chip").forEach((c) => c.classList.toggle("active", c === chip));
+                pomoTotal = parseInt(chip.dataset.mins, 10) * 60;
+                pomoLeft = pomoTotal;
+                pausePomo();
+                renderPomo();
+            });
+        });
+
+        // data controls
+        $("export-json").addEventListener("click", exportJSON);
+        $("import-json").addEventListener("change", (e) => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ""; });
+        $("export-md").addEventListener("click", exportMarkdown);
+        $("reset-all").addEventListener("click", resetAll);
+
+        // shortcuts
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") { closeModal(); hideHistory(); }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("search-input").focus(); }
         });
     }
 
-    function triggerConfetti() {
-        const canvas = document.getElementById('confetti-canvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    /* ------------------------------ INIT --------------------------------- */
+    function init() {
+        applyTheme(localStorage.getItem(KEY.theme) || "theme-dark");
+        dailyStreak();
+        bind();
+        switchPage(currentPage);
+        renderAll();
+        renderSearchHistory();
+        renderPomo();
 
-        const particles = Array.from({ length: 50 }).map(() => ({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height - canvas.height,
-            color: ['#ef4444', '#38bdf8', '#10b981', '#f59e0b'][Math.floor(Math.random() * 4)],
-            size: Math.random() * 6 + 4,
-            speed: Math.random() * 3 + 2
-        }));
-
-        let animFrame;
-        function render() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(p => {
-                p.y += p.speed;
-                ctx.fillStyle = p.color;
-                ctx.fillRect(p.x, p.y, p.size, p.size);
-            });
-
-            if (particles.some(p => p.y < canvas.height)) {
-                animFrame = requestAnimationFrame(render);
-            } else {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                cancelAnimationFrame(animFrame);
-            }
-        }
-        render();
+        // rotating search placeholder
+        setInterval(() => {
+            const el = $("search-input");
+            if (!el || document.activeElement === el || el.value) return;
+            phIndex = (phIndex + 1) % SEARCH_PLACEHOLDERS.length;
+            el.placeholder = SEARCH_PLACEHOLDERS[phIndex];
+        }, 3200);
     }
 
-    function escapeHTML(str) {
-        return str.replace(/[&<>'"]/g, 
-            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-        );
-    }
-});
+    document.addEventListener("DOMContentLoaded", init);
+})();

@@ -156,6 +156,7 @@ This page also credits the team and the event organizers.
 
 ## 🏗️ Architecture & Workflow
 
+
 ```
      PDFs & Notes      Web Links      CT / Exam Dates      Lab Tasks      
                                      |
@@ -188,7 +189,8 @@ This page also credits the team and the event organizers.
                  |         Browser LocalStorage         |
                  |   JSON Backup  |  Markdown Export    |
                  +--------------------------------------+
-```
+
+
 
 *Five layers, one loop: capture → sort → act/find → persist — and back to capture again.*
 
@@ -239,7 +241,7 @@ State is saved instantly to LocalStorage (with optional JSON / Markdown export)
 │   └── script.js         # Core Logic, LocalStorage Sync & Timer Mechanics
 ├── index.html            # Main Dashboard Page
 ├── LICENSE               # Project License File
-└── README.md             # Project Documentation
+└── README.md             # Project Documentation 
 ```
 
 ---
@@ -263,3 +265,5 @@ cd digital-backpack
 **Forkathon: Freshers Hackathon 2026** presented by **ForkedArch**, powered by **XtendArena**
 
 </div>
+
+

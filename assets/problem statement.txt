@@ -1,0 +1,31 @@
+The Digital Backpack
+
+A student moves through university carrying an invisible backpack.
+
+Inside it are assignments, deadlines, notes, links, passwords to remember, project ideas, event registrations, documents, screenshots, reminders, unfinished tasks, and dozens of browser tabs.
+
+What's inside your digital backpack?
+Hmm, a folder called "Important Stuff"?
+
+assignment_final.pdf
+assignment_final2.pdf
+mawa_discrete_CT.pdf
+e_kemon_ajob_porashona.pdf
+siam_ghumacche.png
+turjo_bhaiya_handsome.pptx
+hridita_oop_notes.pdf
+
+And somewhere in your browser history is the link you desperately need.
+
+Everything is there.
+
+You just can't find anything.
+
+There is simply too much scattered information.
+A complete mess like hell!
+
+Let's build a system that helps people turn scattered digital information into something understandable and actionable!
+Users might collect information from different sources and your system could help organize, summarize, prioritize, connect, retrieve, or transform it into useful actions.
+
+Brainstorming twist:
+The challenge isn't just storing information. It's helping the user answer: "What do I actually need to do with all this?"

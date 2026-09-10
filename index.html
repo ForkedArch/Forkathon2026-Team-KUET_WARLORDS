@@ -3,22 +3,322 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KUET WARLORDS</title>
-    
-    <!-- Link external CSS stylesheet -->
+    <title>The Digital Backpack | Command Center</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="theme-dark">
 
-    <header>
-        <h1>Team KUET WARLORDS</h1>
+    <!-- Top Utility & System Status Bar -->
+    <div class="top-bar">
+        <div class="status-indicator">
+            <span class="status-dot online" id="sync-status"></span>
+            <span id="status-text">Offline Ready (Local Storage Active)</span>
+        </div>
+        
+        <div class="top-controls">
+            <!-- Theme Switcher -->
+            <label for="theme-select">🎨 Theme:</label>
+            <select id="theme-select">
+                <option value="theme-dark">Dark Mode</option>
+                <option value="theme-light">Light Mode</option>
+                <option value="theme-hacker">Hacker Green</option>
+                <option value="theme-kuet">KUET Red & Blue</option>
+            </select>
+
+            <!-- Mode Toggles -->
+            <button id="exam-mode-btn" class="toggle-btn">🔥 Exam Week Mode: OFF</button>
+            <button id="zen-mode-btn" class="toggle-btn">🧘 Zen Mode: OFF</button>
+
+            <!-- Font Resizer -->
+            <div class="font-resizer">
+                <button id="font-decrease">A-</button>
+                <button id="font-reset">A</button>
+                <button id="font-increase">A+</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Section -->
+    <header class="hero-header">
+        <div class="header-branding">
+            <h1>🎒 The Digital Backpack</h1>
+            <p class="tagline">Engineered for KUETians | Team KUET WARLORDS</p>
+        </div>
+
+        <!-- Daily Digest Banner -->
+        <div class="daily-digest-banner" id="daily-digest">
+            <span class="digest-icon">📢</span>
+            <p id="digest-text">Good morning, Warrior! You have <strong>0 urgent CTs</strong> and <strong>0 unread slides</strong> today.</p>
+        </div>
+
+        <!-- Gamification & Stats Dashboard -->
+        <div class="stats-grid">
+            <!-- Clutter Gauge -->
+            <div class="stat-card clutter-box">
+                <div class="stat-header">
+                    <span>🎒 Backpack Clutter</span>
+                    <strong id="clutter-text">0%</strong>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress-fill" style="width: 0%;"></div>
+                </div>
+                <small id="clutter-status-msg">Clean & Clear!</small>
+            </div>
+
+            <!-- Streak Counter -->
+            <div class="stat-card streak-box">
+                <span class="stat-icon">🔥</span>
+                <div class="stat-info">
+                    <h3 id="streak-count">0 Days</h3>
+                    <p>Productivity Streak</p>
+                </div>
+            </div>
+
+            <!-- XP Level & Rank -->
+            <div class="stat-card xp-box">
+                <span class="stat-icon">⚡</span>
+                <div class="stat-info">
+                    <h3 id="user-rank">Lab Muggle</h3>
+                    <p>Level <span id="user-level">1</span> (XP: <span id="user-xp">0</span>/100)</p>
+                </div>
+            </div>
+
+            <!-- Time Budgeting Summary -->
+            <div class="stat-card budget-box">
+                <span class="stat-icon">⏳</span>
+                <div class="stat-info">
+                    <h3 id="study-hours-left">0 hrs</h3>
+                    <p>Estimated Study Time Left</p>
+                </div>
+            </div>
+        </div>
     </header>
 
-    <main id="app-root">
-        <p>Project initial setup ready.</p>
+    <main class="main-layout">
+
+        <!-- Left Column: Command & Urgency Engine -->
+        <aside class="sidebar-engine">
+
+            <!-- Panic & Urgent Action Center -->
+            <section class="widget-card panic-card">
+                <h2>🚨 Urgency Control</h2>
+                <button id="panic-btn" class="danger-btn">⚡ Panic Mode (Filter Next 12 Hours)</button>
+                
+                <div id="urgent-list" class="urgent-container">
+                    <p class="empty-state">No urgent deadlines right now! Relax or prep ahead.</p>
+                </div>
+            </section>
+
+            <!-- Integrated Pomodoro Sprint Timer -->
+            <section class="widget-card pomodoro-card">
+                <h2>⏱️ Pomodoro Study Timer</h2>
+                <p class="widget-subtitle">Attached to: <em id="pomo-active-task">None Selected</em></p>
+                
+                <div class="timer-display">
+                    <span id="pomo-minutes">25</span>:<span id="pomo-seconds">00</span>
+                </div>
+
+                <div class="timer-controls">
+                    <button id="pomo-start-btn" class="action-btn start">Start</button>
+                    <button id="pomo-pause-btn" class="action-btn pause">Pause</button>
+                    <button id="pomo-reset-btn" class="action-btn reset">Reset</button>
+                </div>
+
+                <div class="audio-tester">
+                    <small>Test Alarm Sound:</small>
+                    <button id="test-chime-btn" class="small-btn">🔔 Test Chime</button>
+                </div>
+            </section>
+
+            <!-- System Data & Backup Controls -->
+            <section class="widget-card data-card">
+                <h2>💾 Backup & Data Engine</h2>
+                <p class="widget-subtitle">Export your workspace state offline</p>
+                
+                <div class="button-group">
+                    <button id="export-json-btn" class="secondary-btn">📥 Export JSON</button>
+                    <label for="import-json-input" class="secondary-btn-label">📤 Import JSON</label>
+                    <input type="file" id="import-json-input" accept=".json" style="display: none;">
+                </div>
+                <button id="export-md-btn" class="secondary-btn full-width">📝 Copy Markdown Checklist</button>
+            </section>
+
+            <!-- 24-Hour Dumpster Archive -->
+            <section class="widget-card dumpster-card">
+                <h2>🗑️ Dumpster Archive</h2>
+                <p class="widget-subtitle">Deleted items stay here for 24 hours</p>
+                <div id="dumpster-list" class="dumpster-container">
+                    <small class="empty-state">Dumpster is empty.</small>
+                </div>
+                <button id="empty-dumpster-btn" class="text-danger-btn">Permanently Clear Trash</button>
+            </section>
+
+        </aside>
+
+        <!-- Right Column: Eisenhower Matrix & Main Content Workspace -->
+        <div class="content-workspace">
+
+            <!-- Eisenhower Matrix (4 Quadrants) -->
+            <section class="eisenhower-section">
+                <h2>📊 Eisenhower Prioritization Grid</h2>
+                
+                <div class="matrix-grid">
+                    <!-- Q1: Urgent & Important -->
+                    <div class="matrix-quadrant q1-urgent-important">
+                        <div class="quadrant-header">
+                            <h3>🔥 Q1: Do First</h3>
+                            <span class="badge red">Urgent + Important</span>
+                        </div>
+                        <div id="quadrant-q1" class="quadrant-body">
+                            <!-- Items auto-populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Q2: Not Urgent & Important -->
+                    <div class="matrix-quadrant q2-important">
+                        <div class="quadrant-header">
+                            <h3>📅 Q2: Schedule</h3>
+                            <span class="badge blue">Not Urgent + Important</span>
+                        </div>
+                        <div id="quadrant-q2" class="quadrant-body">
+                            <!-- Items auto-populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Q3: Urgent & Not Important -->
+                    <div class="matrix-quadrant q3-urgent">
+                        <div class="quadrant-header">
+                            <h3>⚡ Q3: Delegate / Quick Do</h3>
+                            <span class="badge yellow">Urgent + Not Important</span>
+                        </div>
+                        <div id="quadrant-q3" class="quadrant-body">
+                            <!-- Items auto-populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Q4: Not Urgent & Not Important -->
+                    <div class="matrix-quadrant q4-trash">
+                        <div class="quadrant-header">
+                            <h3>🧹 Q4: Eliminate / Archive</h3>
+                            <span class="badge gray">Low Priority</span>
+                        </div>
+                        <div id="quadrant-q4" class="quadrant-body">
+                            <!-- Items auto-populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Input Form Section (Integrates Member 2's Entry Points) -->
+            <section class="widget-card form-section">
+                <h3>➕ Add New Resource / File</h3>
+                
+                <form id="add-form" class="responsive-form">
+                    <div class="form-group">
+                        <label for="item-name">File Name or URL:</label>
+                        <input type="text" id="item-name" placeholder="e.g. mawa_discrete_CT.pdf or https://drive.google.com/..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="item-context">Readable Nickname (Context):</label>
+                        <input type="text" id="item-context" placeholder="e.g. Discrete Math CT Syllabus & Slides">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="item-course">Course:</label>
+                            <select id="item-course">
+                                <option value="CSE-1101">CSE-1101 (Discrete Math)</option>
+                                <option value="EEE-1201">EEE-1201 (Basic Electrical)</option>
+                                <option value="HUM-1103">HUM-1103 (English & Economics)</option>
+                                <option value="General">General / Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="item-type">Type:</label>
+                            <select id="item-type">
+                                <option value="File">📄 File (.pdf, .pptx)</option>
+                                <option value="Link">🔗 Web Link / Drive</option>
+                                <option value="Task">✅ Task / CT</option>
+                                <option value="Note">📝 Quick Note</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="item-date">Deadline Date & Time:</label>
+                            <input type="datetime-local" id="item-date">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="item-time-cost">Est. Study Time:</label>
+                            <select id="item-time-cost">
+                                <option value="15">15 mins</option>
+                                <option value="30" selected>30 mins</option>
+                                <option value="60">1 hour</option>
+                                <option value="120">2 hours</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="item-priority">Priority Level:</label>
+                            <select id="item-priority">
+                                <option value="Auto">Auto Detect</option>
+                                <option value="High">🔴 High Priority</option>
+                                <option value="Medium">🟡 Medium Priority</option>
+                                <option value="Low">🟢 Low Priority</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="add-btn" class="primary-btn">➕ Add to Backpack</button>
+                </form>
+            </section>
+
+            <!-- Search and Main Saved Display Grid (Member 4 Integrations) -->
+            <section class="widget-card display-section">
+                <div class="display-header">
+                    <h3>📁 Saved Backpack Items</h3>
+                    
+                    <!-- Search & Filter Controls -->
+                    <div class="search-bar">
+                        <input type="text" id="search-input" placeholder="🔍 Search by name, course, or hashtag (#CT)...">
+                        <select id="sort-select">
+                            <option value="deadline">Sort by Closest Deadline</option>
+                            <option value="date-added">Sort by Date Added</option>
+                            <option value="priority">Sort by Priority</option>
+                            <option value="alpha">Sort Alphabetically</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tag Cloud Filters -->
+                <div class="tag-cloud">
+                    <button class="tag-pill active" data-filter="all">All</button>
+                    <button class="tag-pill" data-filter="#CT">#CT</button>
+                    <button class="tag-pill" data-filter="#LabReport">#LabReport</button>
+                    <button class="tag-pill" data-filter="#Slides">#Slides</button>
+                    <button class="tag-pill" data-filter="#DriveLink">#DriveLink</button>
+                </div>
+
+                <!-- Items Container -->
+                <div id="items-container" class="items-grid">
+                    <!-- Cards dynamically inserted here by JavaScript -->
+                </div>
+            </section>
+
+        </div>
     </main>
 
-    <!-- Link external JavaScript file -->
+    <!-- Hidden Confetti Canvas Overlay -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <footer class="main-footer">
+        <p>The Digital Backpack &copy; 2026 | Built for KUET Forkathon | Team KUET WARLORDS</p>
+    </footer>
+
     <script src="js/script.js"></script>
 </body>
 </html>

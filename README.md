@@ -80,7 +80,7 @@ An offline-first, browser-based dashboard designed to collect messy campus input
 │                                                                          │
 │  ┌────────────────────────────────────────────────────────────────────┐  │
 │  │                       1. INPUT CAPTURE LAYER                       │  │
-│  │         Quick-Add Engine  •  Tagging System  •  Date Parsing        │  │
+│  │         Quick-Add Engine  •  Tagging System  •  Date Parsing       │  │
 │  └──────────────────────────────────┬─────────────────────────────────┘  │
 │                                     │                                    │
 │  ┌──────────────────────────────────▼─────────────────────────────────┐  │

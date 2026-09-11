@@ -207,27 +207,6 @@ This page also credits the team and the event organizers.
 ### Data Flow
 
 ```
-Student adds an item (task / note / link / deadline)
-        |
-        v
-Input Capture Layer tags it (subject, deadline, priority)
-        |
-        v
-Processing Layer places it in the correct Eisenhower quadrant
-        |
-        +--> Clutter Gauge updates
-        +--> If due < 12h, flagged for Panic Mode
-        |
-        v
-Student starts a Focus Sprint on the top-priority card
-        |
-        v
-XP, streak & badge state update in Achievements
-        |
-        v
-State is saved instantly to LocalStorage (with optional JSON / Markdown export)
-```
-
 ### 📁 Repository Layout
 
 ```plaintext

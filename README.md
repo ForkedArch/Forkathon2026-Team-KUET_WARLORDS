@@ -204,8 +204,6 @@ This page also credits the team and the event organizers.
 | 4 | **Academic Hub** | A parallel retrieval path — search and filter everything ever added, by type or by course, for when a student needs to *find* rather than *act*. |
 | 5 | **Local Persistence** | Nothing leaves the browser unless the student chooses to — LocalStorage keeps it instant, with JSON export/import and one-click Markdown checklists for portability. |
 
-### Data Flow
-
 ```
 ### 📁 Repository Layout
 

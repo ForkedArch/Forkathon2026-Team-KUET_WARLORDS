@@ -227,6 +227,12 @@ This page also credits the team and the event organizers.
 
 Just open the live deployment — [thedigitalbackpack.netlify.app](https://thedigitalbackpack.netlify.app/). No sign-up, nothing to install.
 
+## 🎬 Presentation Video
+
+Watch our project overview and walk-through in action:
+
+▶️ **[Watch Presentation Video](https://youtu.be/ZofU7w0ggG0)**
+
 ---
 
 <div align="center">

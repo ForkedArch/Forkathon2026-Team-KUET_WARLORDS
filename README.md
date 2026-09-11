@@ -71,7 +71,7 @@
 | **Memory chaos** | "I *know* I saved that link somewhere…" | The brain is used as an index for hundreds of untagged items — it isn't built for that |
 | **Decision chaos** | Everything technically exists, but nothing tells you what's due *today* vs. *someday* | Storage ≠ clarity. Having the file is not the same as knowing what to do with it |
 
-Put together, this is **not a storage problem** — it's a **retrieval and decision-making problem**. Students don't need a 47th place to save things; they need the *one place* that already knows what saving something means for their next move.
+Put together, this is **not a storage problem** it's a **retrieval and decision-making problem**. Students don't need a 47th place to save things; they need the *one place* that already knows what saving something means for their next move.
 
 ### 🎯 KUET_WARLORDS's Understanding
 
@@ -79,9 +79,9 @@ Strip away the surface symptoms (cluttered folders, dead links, scattered chats)
 
 > ### 🗣️ "What do I actually need to do with all of this — **right now**?"
 
-That is the exact question our system is built to answer, every time it's opened. Not "where did I save it," not "what did I collect this week" — but **what deserves my next hour**. Everything about *The Digital Backpack* — the capture form, the priority sorting, the panic filter, the sprint timer — exists purely in service of answering that one line, instantly, without the student having to think about *where* anything lives.
+That is the exact question our system is built to answer, every time it's opened. Not "where did I save it," not "what did I collect this week" but **what deserves my next hour**. Everything about *The Digital Backpack* the capture form, the priority sorting, the panic filter, the sprint timer exists purely in service of answering that one line, instantly, without the student having to think about *where* anything lives.
 
-We treat information the way a good assistant would: the moment something enters the system, it's automatically read for urgency and importance and slotted into a quadrant — so the *answer* to "what do I do now" is always sitting on screen, not buried in a search.
+We treat information the way a good assistant would: the moment something enters the system, it's automatically read for urgency and importance and slotted into a quadrant so the *answer* to "what do I do now" is always sitting on screen, not buried in a search.
 
 ---
 
@@ -246,17 +246,9 @@ State is saved instantly to LocalStorage (with optional JSON / Markdown export)
 
 ---
 
-## 🚀 Try It / Run Locally
+## 🚀 Try It 
 
-**Fastest way:** just open the live deployment — [thedigitalbackpack.netlify.app](https://thedigitalbackpack.netlify.app/). No sign-up, nothing to install.
-
-**Run it yourself:** no build step, no dependencies — it's a static, offline-first web app.
-
-```bash
-git clone https://github.com/<your-org>/digital-backpack.git
-cd digital-backpack
-# then just open index.html in your browser
-```
+Just open the live deployment — [thedigitalbackpack.netlify.app](https://thedigitalbackpack.netlify.app/). No sign-up, nothing to install.
 
 ---
 
